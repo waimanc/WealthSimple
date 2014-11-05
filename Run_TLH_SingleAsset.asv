@@ -1,0 +1,69 @@
+%%%%% Run TLH on portfolio is single ETFs
+
+initialDeposit = 100000;
+initialWeights = [1];
+thresholds = 0.02:0.005:0.2;
+taxRate = 0.5*(0.29 + 0.1316);
+taxRateEnd = 0.1;
+
+ticker = 'VTI';
+VTI_Data = getYahooDailyData(ticker, '1/1/2000', '10/31/2014', 'mm/dd/yyyy');
+VTI = fints(table2array(VTI_Data.VTI(:,1)),table2array(VTI_Data.VTI(:,5)),'VTI');
+VTI('06/18/2008::10/31/2014') = VTI('06/18/2008::10/31/2014')*2;
+VTI_returns = log(VTI ./ lagts(VTI,1));
+VTI_returns = VTI_returns(2:end);
+VTI_cumReturns = exp(cumsum(VTI_returns));
+
+AfterTaxGain = nan(length(thresholds),1);
+currMaxAfterTaxGain = -Inf;
+currOptimalThreshold = [0];
+
+for i = 1:length(thresholds)
+         [AfterTaxGrowth AfterTaxGrowthNoTLH...
+          PortfolioEndValue PortfolioEndValueNoTLH...
+          EndCapitalGainsTax...
+          HarvestedDates HarvestedAmounts]      = TLH(fts2mat(VTI_returns.VTI),initialDeposit,initialWeights,...
+                                                     thresholds(i),taxRate,taxRateEnd);
+                                                
+        AfterTaxGain(i) = AfterTaxGrowth;
+        
+        if AfterTaxGain(i) > currMaxAfterTaxGain
+            currMaxAfterTaxGain = AfterTaxGain(i);
+            currOptimalThreshold(1) = thresholds(i);
+        end
+end
+
+[AfterTaxGrowth AfterTaxGrowthNoTLH...
+ PortfolioEndValue PortfolioEndValueNoTLH...
+ EndCapitalGainsTax...
+ HarvestedDates HarvestedAmounts]      = TLH(fts2mat(VTI_returns.VTI),initialDeposit,initialWeights,...
+                                            currOptimalThreshold,taxRate,taxRateEnd);
+
+VTI_harvestDates = VTI_cumReturns;
+VTI_harvestDates(1:end) = 0;
+VTI_harvestDates(HarvestedDates{1}) = VTI_cumReturns(HarvestedDates{1});
+VTI_harvestDates = VTI_harvestDates(HarvestedDates{1});
+
+plot(VTI_harvestDates,'ro');
+hold on;
+plot(VTI_cumReturns,'k-');
+title('Cumulative Growth');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
